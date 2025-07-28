@@ -17,9 +17,9 @@ def load_model():
         st.error("Model file 'freight_model.pkl' not found. Using untrained model as fallback.")
         return GradientBoostingRegressor()
 
-@st.cache_data
-def predict_freight(model, route, ais_data=None, days=30):
+def predict_freight(route, ais_data=None, days=30):
     """Generate freight forecast for the selected route."""
+    model = load_model()
     try:
         dates = [datetime.date.today() + datetime.timedelta(i) for i in range(days)]
         # Placeholder feature engineering (replace with real AIS/bunker/seasonal data)
@@ -37,6 +37,11 @@ def predict_freight(model, route, ais_data=None, days=30):
     except Exception as e:
         st.error(f"Error generating freight forecast: {e}")
         return pd.DataFrame()
+
+@st.cache_data
+def cached_predict_freight(route, days=30):
+    """Wrapper for caching freight forecast without unhashable arguments."""
+    return predict_freight(route, ais_data=None, days=days)
 
 # -- Streamlit UI --
 st.title("Freight-Adjusted Netback Calculator")
@@ -75,9 +80,8 @@ else:
     except:
         st.warning("Failed to fetch AIS data from API. Using default forecast.")
 
-# Load model and generate freight forecast
-model = load_model()
-forecast_df = predict_freight(model, route, ais_data=ais_data, days=30)
+# Generate freight forecast
+forecast_df = predict_freight(route, ais_data=ais_data, days=30) if ais_data is not None else cached_predict_freight(route, days=30)
 
 # 3. Display freight forecast
 if not forecast_df.empty:
